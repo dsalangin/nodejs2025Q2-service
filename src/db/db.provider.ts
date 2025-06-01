@@ -11,5 +11,6 @@ export const dbProvider: Provider = {
   useValue: {
     users: new DBEntity<User>(),
     artists: new DBEntity<Artist>(),
+    albums: new DBEntity<Artist>(),
   },
 };
