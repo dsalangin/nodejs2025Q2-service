@@ -5,12 +5,20 @@ import { DB_PROVIDER } from 'src/db/db.provider';
 import { Artist } from './entities/artist.entity';
 import { DBEntity } from 'src/db/db-entity';
 import { randomUUID } from 'crypto';
+import { DBFavorite } from 'src/db/db-favorites';
+import { Album } from '../album/entities/album.entity';
+import { Track } from '../track/entities/track.entity';
 
 @Injectable()
 export class ArtistService {
   constructor(
     @Inject(DB_PROVIDER)
-    private db: { artists: DBEntity<Artist> },
+    private db: {
+      artists: DBEntity<Artist>;
+      albums: DBEntity<Album>;
+      tracks: DBEntity<Track>;
+      favorites: DBFavorite;
+    },
   ) {}
 
   create(createArtistDto: CreateArtistDto) {
@@ -51,6 +59,16 @@ export class ArtistService {
     if (!deletedArtist) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
+
+    this.db.albums.getByAttributes({ artistId: id }).forEach((album) => {
+      this.db.albums.update(album.id, { ...album, artistId: null });
+    });
+
+    this.db.tracks.getByAttributes({ artistId: id }).forEach((track) => {
+      this.db.tracks.update(track.id, { ...track, artistId: null });
+    });
+
+    this.db.favorites.removeArtist(id);
 
     return null;
   }
