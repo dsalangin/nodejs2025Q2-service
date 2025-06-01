@@ -5,13 +5,20 @@ import { DB_PROVIDER } from 'src/db/db.provider';
 import { DBEntity } from 'src/db/db-entity';
 import { Album } from './entities/album.entity';
 import { randomUUID } from 'crypto';
+import { Track } from '../track/entities/track.entity';
+import { DBFavorite } from 'src/db/db-favorites';
 
 @Injectable()
 export class AlbumService {
   constructor(
     @Inject(DB_PROVIDER)
-    private db: { albums: DBEntity<Album> },
+    private db: {
+      albums: DBEntity<Album>;
+      tracks: DBEntity<Track>;
+      favorites: DBFavorite;
+    },
   ) {}
+
   create(createAlbumDto: CreateAlbumDto) {
     const album = this.mapCreateDtoToEntity(createAlbumDto);
     return this.db.albums.create(album);
@@ -50,6 +57,12 @@ export class AlbumService {
     if (!deletedAlbum) {
       throw new HttpException('Album not found', HttpStatus.NOT_FOUND);
     }
+
+    this.db.tracks.getByAttributes({ albumId: id }).forEach((track) => {
+      this.db.tracks.update(track.id, { ...track, albumId: null });
+    });
+
+    this.db.favorites.removeAlbum(id);
 
     return null;
   }
