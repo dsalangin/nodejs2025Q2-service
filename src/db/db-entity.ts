@@ -19,6 +19,14 @@ export class DBEntity<T extends { id: string }> {
     return item;
   }
 
+  getByAttributes(attrs: Partial<T>): T[] {
+    return this._store.filter((item) => {
+      return Object.entries(attrs).every(([key, value]) => {
+        return item[key as keyof T] === value;
+      });
+    });
+  }
+
   public create(data: T): T {
     this._store.push(data);
 
