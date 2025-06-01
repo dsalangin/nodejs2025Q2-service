@@ -5,12 +5,13 @@ import { DB_PROVIDER } from 'src/db/db.provider';
 import { DBEntity } from 'src/db/db-entity';
 import { Track } from './entities/track.entity';
 import { randomUUID } from 'crypto';
+import { DBFavorite } from 'src/db/db-favorites';
 
 @Injectable()
 export class TrackService {
   constructor(
     @Inject(DB_PROVIDER)
-    private db: { tracks: DBEntity<Track> },
+    private db: { tracks: DBEntity<Track>; favorites: DBFavorite },
   ) {}
   create(createTrackDto: CreateTrackDto) {
     const album = this.mapCreateDtoToEntity(createTrackDto);
@@ -50,6 +51,8 @@ export class TrackService {
     if (!deletedTrack) {
       throw new HttpException('Album not found', HttpStatus.NOT_FOUND);
     }
+
+    this.db.favorites.removeTrack(id);
 
     return null;
   }
