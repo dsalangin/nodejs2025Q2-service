@@ -73,7 +73,7 @@ The server will start on `http://localhost:3000` by default.
 To run the full environment:
 
 ```bash
-docker compose up --build
+docker-compose up
 ```
 
 ## Entities
