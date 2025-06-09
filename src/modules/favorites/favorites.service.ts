@@ -1,29 +1,40 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { DBEntity } from 'src/db/db-entity';
-import { DBFavorite } from 'src/db/db-favorites';
-import { DB_PROVIDER } from 'src/db/db.provider';
-import { Artist } from '../artist/entities/artist.entity';
-import { Album } from '../album/entities/album.entity';
-import { Track } from '../track/entities/track.entity';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { PrismaService } from 'src/db/prisma.service';
 
 @Injectable()
 export class FavoritesService {
-  constructor(
-    @Inject(DB_PROVIDER)
-    private db: {
-      favorites: DBFavorite;
-      artists: DBEntity<Artist>;
-      albums: DBEntity<Album>;
-      tracks: DBEntity<Track>;
-    },
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  findAll() {
-    return this.getEntities();
+  async findAll() {
+    const favorite = await this.getFavorite();
+
+    return {
+      artists: await this.prisma.artist.findMany({
+        where: {
+          id: {
+            in: favorite.artists,
+          },
+        },
+      }),
+      albums: await this.prisma.album.findMany({
+        where: {
+          id: {
+            in: favorite.albums,
+          },
+        },
+      }),
+      tracks: await this.prisma.track.findMany({
+        where: {
+          id: {
+            in: favorite.tracks,
+          },
+        },
+      }),
+    };
   }
 
-  addArtist(id: string) {
-    const artist = this.db.artists.getById(id);
+  async addArtist(id: string) {
+    const artist = await this.prisma.artist.findFirst({ where: { id } });
 
     if (!artist) {
       throw new HttpException(
@@ -32,26 +43,44 @@ export class FavoritesService {
       );
     }
 
-    return this.db.favorites.addArtist(id);
+    const favorite = await this.getFavorite();
+    const updatedData = [...new Set([...favorite.artists, id])];
+
+    const updatedFavorite = await this.prisma.favorite.update({
+      where: { id: favorite.id },
+      data: {
+        artists: updatedData,
+      },
+    });
+
+    return updatedFavorite;
   }
 
-  removeArtist(id: string) {
-    const artist = this.db.artists.getById(id);
+  async removeArtist(id: string) {
+    const artist = await this.prisma.artist.findFirst({ where: { id } });
 
     if (!artist) {
       throw new HttpException(
-        `Artist with id ${id} not found in favorites`,
-        HttpStatus.NOT_FOUND,
+        `Artist with id ${id} not found`,
+        HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
 
-    this.db.favorites.removeArtist(id);
+    const favorite = await this.getFavorite();
+    const updatedData = favorite.artists.filter((artistId) => artistId !== id);
+
+    await this.prisma.favorite.update({
+      where: { id: favorite.id },
+      data: {
+        artists: updatedData,
+      },
+    });
 
     return null;
   }
 
-  addAlbum(id: string) {
-    const album = this.db.albums.getById(id);
+  async addAlbum(id: string) {
+    const album = await this.prisma.album.findFirst({ where: { id } });
 
     if (!album) {
       throw new HttpException(
@@ -60,11 +89,21 @@ export class FavoritesService {
       );
     }
 
-    return this.db.favorites.addAlbum(id);
+    const favorite = await this.getFavorite();
+    const updatedData = [...new Set([...favorite.albums, id])];
+
+    const updatedFavorite = await this.prisma.favorite.update({
+      where: { id: favorite.id },
+      data: {
+        albums: updatedData,
+      },
+    });
+
+    return updatedFavorite;
   }
 
-  removeAlbum(id: string) {
-    const album = this.db.albums.getById(id);
+  async removeAlbum(id: string) {
+    const album = await this.prisma.album.findFirst({ where: { id } });
 
     if (!album) {
       throw new HttpException(
@@ -73,13 +112,21 @@ export class FavoritesService {
       );
     }
 
-    this.db.favorites.removeAlbum(id);
+    const favorite = await this.getFavorite();
+    const updatedData = favorite.albums.filter((albumId) => albumId !== id);
+
+    await this.prisma.favorite.update({
+      where: { id: favorite.id },
+      data: {
+        albums: updatedData,
+      },
+    });
 
     return null;
   }
 
-  addTrack(id: string) {
-    const track = this.db.tracks.getById(id);
+  async addTrack(id: string) {
+    const track = await this.prisma.track.findFirst({ where: { id } });
 
     if (!track) {
       throw new HttpException(
@@ -88,11 +135,21 @@ export class FavoritesService {
       );
     }
 
-    return this.db.favorites.addTrack(id);
+    const favorite = await this.getFavorite();
+    const updatedData = [...new Set([...favorite.tracks, id])];
+
+    const updatedFavorite = await this.prisma.favorite.update({
+      where: { id: favorite.id },
+      data: {
+        tracks: updatedData,
+      },
+    });
+
+    return updatedFavorite;
   }
 
-  removeTrack(id: string) {
-    const track = this.db.tracks.getById(id);
+  async removeTrack(id: string) {
+    const track = await this.prisma.track.findFirst({ where: { id } });
 
     if (!track) {
       throw new HttpException(
@@ -101,28 +158,34 @@ export class FavoritesService {
       );
     }
 
-    this.db.favorites.removeTrack(id);
+    const favorite = await this.getFavorite();
+    const updatedData = favorite.tracks.filter((trackId) => trackId !== id);
+
+    await this.prisma.favorite.update({
+      where: { id: favorite.id },
+      data: {
+        tracks: updatedData,
+      },
+    });
 
     return null;
   }
 
-  getEntities() {
-    const result = {};
+  async getFavorite() {
+    const favorite = await this.prisma.favorite.findFirst();
 
-    Object.keys(this.db.favorites.getAll()).forEach((entity) => {
-      result[entity] = this.db.favorites.getAll()[entity].reduce((acc, id) => {
-        const item = this.db[entity].getById(id);
+    if (!favorite) {
+      const favorite = this.prisma.favorite.create({
+        data: {
+          artists: [],
+          albums: [],
+          tracks: [],
+        },
+      });
 
-        if (!item) {
-          return acc;
-        }
+      return favorite;
+    }
 
-        acc.push(item);
-
-        return acc;
-      }, []);
-    });
-
-    return result;
+    return favorite;
   }
 }
