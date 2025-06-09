@@ -1,76 +1,57 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateTrackDto } from './dto/create-track.dto';
 import { UpdateTrackDto } from './dto/update-track.dto';
-import { DB_PROVIDER } from 'src/db/db.provider';
-import { DBEntity } from 'src/db/db-entity';
-import { Track } from './entities/track.entity';
-import { randomUUID } from 'crypto';
-import { DBFavorite } from 'src/db/db-favorites';
+import { PrismaService } from 'src/db/prisma.service';
 
 @Injectable()
 export class TrackService {
-  constructor(
-    @Inject(DB_PROVIDER)
-    private db: { tracks: DBEntity<Track>; favorites: DBFavorite },
-  ) {}
-  create(createTrackDto: CreateTrackDto) {
-    const album = this.mapCreateDtoToEntity(createTrackDto);
-    return this.db.tracks.create(album);
+  constructor(private prisma: PrismaService) {}
+
+  async create(createTrackDto: CreateTrackDto) {
+    const track = await this.prisma.track.create({ data: createTrackDto });
+
+    return track;
   }
 
-  findAll() {
-    return this.db.tracks.getAll();
+  async findAll() {
+    const tracks = await this.prisma.track.findMany();
+
+    return tracks;
   }
 
-  findOne(id: string) {
-    const album = this.db.tracks.getById(id);
-
-    if (!album) {
-      throw new HttpException('Album not found', HttpStatus.NOT_FOUND);
-    }
-
-    return album;
-  }
-
-  update(id: string, updateTrackDto: UpdateTrackDto) {
-    const track = this.db.tracks.getById(id);
+  async findOne(id: string) {
+    const track = await this.prisma.track.findFirst({ where: { id } });
 
     if (!track) {
-      throw new HttpException('Artist not found', HttpStatus.NOT_FOUND);
+      throw new HttpException('Track not found', HttpStatus.NOT_FOUND);
     }
 
-    const trackData = this.mapUpdateDtoToEntity(track, updateTrackDto);
-    const updatedTrack = this.db.tracks.update(id, trackData);
+    return track;
+  }
+
+  async update(id: string, updateTrackDto: UpdateTrackDto) {
+    const track = await this.prisma.track.findFirst({ where: { id } });
+
+    if (!track) {
+      throw new HttpException('Track not found', HttpStatus.NOT_FOUND);
+    }
+    const updatedTrack = await this.prisma.track.update({
+      where: { id },
+      data: updateTrackDto,
+    });
 
     return updatedTrack;
   }
 
-  remove(id: string) {
-    const deletedTrack = this.db.tracks.delete(id);
+  async remove(id: string) {
+    const track = await this.prisma.track.findFirst({ where: { id } });
 
-    if (!deletedTrack) {
-      throw new HttpException('Album not found', HttpStatus.NOT_FOUND);
+    if (!track) {
+      throw new HttpException('Track not found', HttpStatus.NOT_FOUND);
     }
 
-    this.db.favorites.removeTrack(id);
+    await this.prisma.track.delete({ where: { id } });
 
     return null;
-  }
-
-  private mapCreateDtoToEntity(dto: CreateTrackDto): Track {
-    return {
-      id: randomUUID(),
-      name: dto.name,
-      artistId: dto.artistId || null,
-      albumId: dto.albumId || null,
-      duration: dto.duration,
-    };
-  }
-
-  private mapUpdateDtoToEntity(track: Track, dto: UpdateTrackDto): Track {
-    return {
-      ...track,
-      ...dto,
-    };
   }
 }
