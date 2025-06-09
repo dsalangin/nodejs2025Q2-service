@@ -1,32 +1,28 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
-import { DBEntity } from 'src/db/db-entity';
-import { DB_PROVIDER } from 'src/db/db.provider';
-import { randomUUID } from 'node:crypto';
+import { PrismaService } from 'src/db/prisma.service';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class UserService {
-  constructor(
-    @Inject(DB_PROVIDER)
-    private db: { users: DBEntity<User> },
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
-    const data = this.mapCreateDtoToEntity(createUserDto);
-    const user = this.db.users.create(data);
+    const user = await this.prisma.user.create({
+      data: createUserDto,
+    });
+
     return this.mapToResponseDto(user);
   }
 
   async findAll() {
-    const users = this.db.users.getAll();
-
+    const users = await this.prisma.user.findMany();
     return users.map((user) => this.mapToResponseDto(user));
   }
 
   async findOne(id: string) {
-    const user = this.db.users.getById(id);
+    const user = await this.prisma.user.findFirst({ where: { id } });
 
     if (!user) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
@@ -36,47 +32,29 @@ export class UserService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
-    const user = this.db.users.getById(id);
+    const user = await this.prisma.user.findFirst({ where: { id } });
 
     if (!user) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
 
     this.verifyOldPassword(user, updateUserDto.oldPassword);
-    const userData = this.mapUpdateDtoToEntity(user, updateUserDto);
-    const updatedUser = this.db.users.update(id, userData);
+    const updatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { password: updateUserDto.newPassword, version: user.version + 1 },
+    });
 
     return this.mapToResponseDto(updatedUser);
   }
 
   async remove(id: string) {
-    const deletedUser = this.db.users.delete(id);
+    const user = await this.prisma.user.findFirst({ where: { id } });
 
-    if (!deletedUser) {
+    if (!user) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
 
-    return null;
-  }
-
-  private mapCreateDtoToEntity(dto: CreateUserDto): User {
-    return {
-      id: randomUUID(),
-      login: dto.login,
-      password: dto.password,
-      version: 1,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-  }
-
-  private mapUpdateDtoToEntity(user: User, dto: UpdateUserDto): User {
-    return {
-      ...user,
-      password: dto.newPassword,
-      version: user.version + 1,
-      updatedAt: Date.now(),
-    };
+    return await this.prisma.user.delete({ where: { id } });
   }
 
   private mapToResponseDto(user: User) {
@@ -84,8 +62,8 @@ export class UserService {
       id: user.id,
       login: user.login,
       version: user.version,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      createdAt: new Date(user.createdAt).getTime(),
+      updatedAt: new Date(user.updatedAt).getTime(),
     };
   }
 
