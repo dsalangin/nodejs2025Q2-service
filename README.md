@@ -1,72 +1,189 @@
-# Home Library Service
+# Home Library
 
-## Prerequisites
+NestJS backend for a home music library management app.
 
-- Git - [Download & Install Git](https://git-scm.com/downloads).
-- Node.js - [Download & Install Node.js](https://nodejs.org/en/download/) and the npm package manager.
+## Stack
 
-## Downloading
+- **Node.js**
+- **NestJS**
+- **PostgreSQL**
+- **Prisma ORM**
+- **Docker**
 
+## Features
+
+- CRUD operations for:
+
+  - **Users**
+  - **Tracks**
+  - **Artists**
+  - **Albums**
+  - **Favorites**
+
+## Installation
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/uv95/home-library.git
+cd home-library
 ```
-git clone {repository URL}
-```
 
-## Installing NPM modules
+### Install Dependencies
 
-```
+```bash
 npm install
 ```
 
-## Running application
+### Add .env
 
+```bash
+mv .env.example .env
 ```
+
+## Running the Application
+
+### Development Mode
+
+```bash
+npm run start:dev
+```
+
+### Production Build
+
+```bash
+npm run build
 npm start
 ```
 
-After starting the app on port (4000 as default) you can open
-in your browser OpenAPI documentation by typing http://localhost:4000/doc/.
-For more information about OpenAPI/Swagger please visit https://swagger.io/.
+The server will start on `http://localhost:3000` by default.
 
-## Testing
+## PostgreSQL & Prisma
 
-After application running open new terminal and enter:
+- Prisma schema defined in `prisma/schema.prisma`
+- Environment variables loaded from `.env`
+- Apply migrations:
 
-To run all tests without authorization
+  ```bash
+  npx prisma migrate deploy
+  ```
 
-```
-npm run test
-```
+## Docker
 
-To run only one of all test suites
+To run the full environment:
 
-```
-npm run test -- <path to suite>
-```
-
-To run all test with authorization
-
-```
-npm run test:auth
+```bash
+docker-compose up
 ```
 
-To run only specific test suite with authorization
+## Entities
 
+### User
+
+```typescript
+interface User {
+  id: string;
+  login: string;
+  password: string;
+  version: number;
+  createdAt: number;
+  updatedAt: number;
+}
 ```
-npm run test:auth -- <path to suite>
+
+### Artist
+
+```typescript
+interface Artist {
+  id: string;
+  name: string;
+  grammy: boolean;
+}
 ```
 
-### Auto-fix and format
+### Track
 
+```typescript
+interface Track {
+  id: string;
+  name: string;
+  artistId: string | null;
+  albumId: string | null;
+  duration: number;
+}
 ```
-npm run lint
+
+### Album
+
+```typescript
+interface Album {
+  id: string;
+  name: string;
+  year: number;
+  artistId: string | null;
+}
 ```
 
+### Favorites
+
+```typescript
+interface Favorites {
+  artists: string[];
+  albums: string[];
+  tracks: string[];
+}
 ```
-npm run format
-```
 
-### Debugging in VSCode
+## API Endpoints
 
-Press <kbd>F5</kbd> to debug.
+### Users
 
-For more information, visit: https://code.visualstudio.com/docs/editor/debugging
+| Method | Endpoint    | Description     |
+| ------ | ----------- | --------------- |
+| GET    | `/user`     | Get all users   |
+| GET    | `/user/:id` | Get user by ID  |
+| POST   | `/user`     | Create new user |
+| PUT    | `/user/:id` | Update user     |
+| DELETE | `/user/:id` | Delete user     |
+
+### Tracks
+
+| Method | Endpoint     | Description      |
+| ------ | ------------ | ---------------- |
+| GET    | `/track`     | Get all tracks   |
+| GET    | `/track/:id` | Get track by ID  |
+| POST   | `/track`     | Create new track |
+| PUT    | `/track/:id` | Update track     |
+| DELETE | `/track/:id` | Delete track     |
+
+### Artists
+
+| Method | Endpoint      | Description       |
+| ------ | ------------- | ----------------- |
+| GET    | `/artist`     | Get all artists   |
+| GET    | `/artist/:id` | Get artist by ID  |
+| POST   | `/artist`     | Create new artist |
+| PUT    | `/artist/:id` | Update artist     |
+| DELETE | `/artist/:id` | Delete artist     |
+
+### Albums
+
+| Method | Endpoint     | Description      |
+| ------ | ------------ | ---------------- |
+| GET    | `/album`     | Get all albums   |
+| GET    | `/album/:id` | Get album by ID  |
+| POST   | `/album`     | Create new album |
+| PUT    | `/album/:id` | Update album     |
+| DELETE | `/album/:id` | Delete album     |
+
+### Favorites
+
+| Method | Endpoint           | Description                  |
+| ------ | ------------------ | ---------------------------- |
+| GET    | `/favs`            | Get all favorites            |
+| POST   | `/favs/track/:id`  | Add track to favorites       |
+| DELETE | `/favs/track/:id`  | Remove track from favorites  |
+| POST   | `/favs/artist/:id` | Add artist to favorites      |
+| DELETE | `/favs/artist/:id` | Remove artist from favorites |
+| POST   | `/favs/album/:id`  | Add album to favorites       |
+| DELETE | `/favs/album/:id`  | Remove album from favorites  |
